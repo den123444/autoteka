@@ -1,0 +1,172 @@
+.tooltip-content-mileage-container-VzQUT {
+    display: flex;
+    flex-direction: column;
+    row-gap: 8px;
+}
+
+.tooltip-content-mileage-mileage-container-vLAJH {
+    display: flex;
+    column-gap: 4px;
+    align-items: center;
+}
+
+.tooltip-content-owner-container-O9RFH {
+    display: flex;
+    flex-direction: column;
+    row-gap: 12px;
+    min-width: 280px;
+}
+
+.tooltip-content-owner-container-O9RFH.tooltip-content-owner-is-bottomsheet-M_6Zr {
+    width: calc(100vw - 32px);
+}
+
+.tooltip-content-owner-person-icon-LWGpB {
+    display: block;
+    width: 24px;
+    height: 24px;
+    background-image: url("data:,");
+    background-repeat: no-repeat;
+    background-size: auto;
+    background-position: center;
+    filter: drop-shadow(0 0 15px rgba(0, 0, 0, .2));
+}
+
+.tooltip-content-owner-btn-container-aZWkp {
+    display: flex;
+    flex-direction: column;
+    row-gap: 8px;
+}
+
+.custom-dot-dot-WwKxv {
+    r: 5;
+    transition: fill .4s ease;
+    stroke: var(--theme-palette-white);
+    fill: var(--theme-palette-white);
+}
+
+.custom-dot-dot-WwKxv[data-warning='true'] {
+    stroke: rgba(252, 164, 0, 1);
+    fill: rgba(252, 164, 0, 1);
+    filter: drop-shadow(0 0 20px rgba(238, 169, 22, .5)) drop-shadow(0 1px 4px rgba(238, 169, 22, .3));
+}
+
+.custom-dot-dot-WwKxv[data-twisted='true'] {
+    stroke: rgba(255, 64, 83, 1);
+    fill: rgba(255, 64, 83, 1);
+    filter: drop-shadow(0 0 20px rgba(255, 64, 83, .5)) drop-shadow(0 1px 4px rgba(255, 64, 83, .3));
+}
+
+.custom-dot-dot-WwKxv.custom-dot-green-shadow-KSh35 {
+    filter: drop-shadow(0 0 20px rgba(2, 209, 92, .5)) drop-shadow(0 1px 2px rgba(2, 209, 92, .55));
+    -webkit-filter: drop-shadow(0 0 20px rgba(2, 209, 92, .5)) drop-shadow(0 1px 2px rgba(2, 209, 92, .55));
+}
+
+.custom-dot-dot-WwKxv.custom-dot-is-safari-FcxAt.custom-dot-green-shadow-KSh35 {
+    stroke: rgba(2, 209, 92, 1);
+    stroke-width: 1;
+}
+
+.custom-dot-dot-WwKxv.custom-dot-red-shadow-BSQ8I {
+    filter: drop-shadow(0 0 20px rgba(255, 64, 83, .5)) drop-shadow(0 1px 4px rgba(255, 64, 83, .3));
+}
+
+.custom-dot-dot-WwKxv.custom-dot-is-safari-FcxAt.custom-dot-red-shadow-BSQ8I {
+    stroke: rgba(255, 64, 83, 1);
+    stroke-width: 1;
+}
+
+.custom-dot-dot-WwKxv.custom-dot-black-shadow-dLDND {
+    filter: drop-shadow(0 0 20px rgba(0, 0, 0, .17)) drop-shadow(0 1px 4px rgba(0, 0, 0, .11));
+}
+
+.custom-dot-dot-WwKxv.custom-dot-is-safari-FcxAt.custom-dot-black-shadow-dLDND {
+    stroke: var(--theme-palette-gray12);
+    stroke-width: 1;
+}
+
+.custom-dot-owner-dot-_iYRo {
+    filter: drop-shadow(0 0 3px rgba(0, 0, 0, .16));
+}
+
+.custom-dot-dot-WwKxv:hover {
+    r: 6;
+    filter: none;
+}
+
+.custom-dot-dot-WwKxv.custom-dot-is-safari-FcxAt:hover {
+    stroke: none;
+}
+
+.custom-dot-dot-WwKxv:focus,
+.custom-dot-owner-dot-_iYRo:focus {
+    outline: none;
+}
+
+.owner-filter-root-Onu1p {
+    margin-top: 16px;
+}
+
+.owner-filter-container-U1SKW {
+    display: flex;
+    column-gap: 6px;
+}
+
+.mileage-chart-mileage-head-kz2Im {
+    display: flex;
+    justify-content: space-between;
+}
+
+.mileage-chart-responsive-container-HhKCC {
+    margin-top: 16px;
+}
+
+.mileage-chart-badge-dD7LM {
+    border-radius: 36px;
+    background-color: var(--theme-palette-gray8);
+    padding: 4px 8px;
+    display: flex;
+    column-gap: 4px;
+    align-items: center;
+    justify-content: center;
+    height: 26px;
+    box-sizing: border-box;
+}
+
+.mileage-chart-switcher-container-AZHNW {
+    display: flex;
+    column-gap: 8px;
+    align-items: center;
+    margin-top: 16px;
+
+    @media (width >= 768px) {
+        margin-top: 20px;
+    }
+}
+
+.mileage-chart-switcher-icon-container-zTF7S {
+    display: flex;
+    column-gap: 5px;
+    align-items: center;
+}
+
+#new-mileage-chart .recharts-wrapper .recharts-cartesian-grid-horizontal line:last-child {
+    stroke-opacity: 0;
+}
+
+#new-mileage-chart .recharts-wrapper .recharts-cartesian-grid-horizontal line:nth-last-child(2) {
+    stroke-opacity: 0;
+}
+
+#new-mileage-chart .recharts-layer.recharts-cartesian-axis.recharts-xAxis.xAxis > line {
+    stroke-opacity: 0;
+}
+
+#new-mileage-chart .recharts-layer.recharts-cartesian-axis.recharts-xAxis.xAxis > .recharts-cartesian-axis-ticks > g > line {
+    stroke-opacity: 0;
+}
+
+#new-mileage-chart .recharts-layer.recharts-cartesian-axis.recharts-xAxis.xAxis g.recharts-cartesian-axis-ticks g.recharts-cartesian-axis-tick:only-of-type {
+    transform: translate(50%, 0);
+}
+
