@@ -41451,5 +41451,47 @@ for (const date of document.querySelectorAll('.desktop-header-date-with-buttons-
     separator.remove();
   }
 }
+
+// Fill the desktop photo strip when a report was originally saved with fewer thumbnails.
+const strip=document.querySelector('[class*="desktop-gallery-previews-small-previews-container"]');
+const thumbnail=strip?.querySelector('[class*="desktop-gallery-previews-picture"]');
+if(strip&&thumbnail){
+  while(previews.length<Math.min(6,data.photoPaths.length)){
+    const index=previews.length;
+    const picture=thumbnail.cloneNode(true);
+    const image=picture.querySelector('img');
+    if(!image)break;
+    picture.querySelectorAll('source').forEach(source=>source.remove());
+    picture.dataset.offlineUi='';
+    picture.style.removeProperty('display');
+    image.hidden=false;
+    image.removeAttribute('srcset');
+    image.src=data.photoPaths[index].src;
+    image.dataset.offlineOriginalSrc=image.src;
+    strip.append(picture);
+    previews.push(image);
+  }
+}
+
+
+const galleryStrip=document.querySelector('[class*="desktop-gallery-previews-small-previews-container"]');
+const remainingPhotos=data.photoPaths.length-6;
+if(galleryStrip&&remainingPhotos>0){
+  const thumb=previews[5]?.closest('picture');
+  if(thumb&&galleryStrip.contains(thumb)){
+    thumb.style.position='relative';
+    thumb.style.display='block';
+    const more=make('button','Ещё +'+remainingPhotos,thumb);
+    more.dataset.offlineUi='';
+    more.type='button';
+    more.setAttribute('aria-label','Открыть все фотографии ('+data.photoPaths.length+')');
+    more.style.cssText='position:absolute;inset:0;width:100%;height:100%;border:0;border-radius:12px;background:#0004;display:grid;place-items:center;cursor:pointer';
+    const badge=make('span','Ещё +'+remainingPhotos,more);
+    badge.style.cssText='background:white;color:#151515;border-radius:20px;padding:7px 12px;white-space:nowrap';
+    more.replaceChildren(badge);
+    more.onclick=event=>{event.stopPropagation();photoGrid();};
+    document.querySelectorAll('.v26-gallery-link').forEach(button=>{button.hidden=true;button.style.display='none';});
+  }
+}
 })();
 </script></body></html>
