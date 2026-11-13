@@ -76,14 +76,7 @@ try {
 function savePublications(){
   try {localStorage.setItem(publicationKey,JSON.stringify([...publications.values()]));} catch {}
 }
-function renderPublications(){
-  byId('publications').hidden=!publications.size;
-  const list=byId('publication-list');
-  list.replaceChildren();
-  for(const item of [...publications.values()].reverse()){
-    const row=element('article','',list);
-    const details=element('div','',row);
-    element('strong',item.slug+' · '+item.sha.slice(0,8),details);
+function publicationStatus(item){
     let status='Ждём запуска GitHub Pages';
     if(item.status==='queued'||item.status==='requested'||item.status==='pending'||item.status==='waiting_for_approval')status='В очереди';
     if(item.status==='in_progress')status='GitHub Pages публикует обновление';
@@ -94,6 +87,31 @@ function renderPublications(){
     }
     if(item.error)status='Статус недоступен: '+item.error;
     if(!item.error&&item.status!=='completed'&&Date.now()-item.started>20*60_000)status+=' · проверьте Actions';
+    return status;
+}
+function renderPublications(){
+  for(const badge of document.querySelectorAll('[data-publication-sha]')){
+    const item=publications.get(badge.dataset.publicationSha);
+    badge.replaceChildren();
+    if(!item)continue;
+    badge.textContent=' · '+publicationStatus(item);
+    if(item.url){
+      const link=element('a',' · GitHub Actions',badge);
+      link.href=item.url;
+      link.target='_blank';
+      link.rel='noopener noreferrer';
+    }
+  }
+  const linked=new Set([...document.querySelectorAll('[data-publication-sha]')].map(node=>node.dataset.publicationSha));
+  const pending=[...publications.values()].filter(item=>item.status!=='completed'&&!linked.has(item.sha));
+  byId('publications').hidden=!pending.length;
+  const list=byId('publication-list');
+  list.replaceChildren();
+  for(const item of pending.reverse()){
+    const row=element('article','',list);
+    const details=element('div','',row);
+    element('strong',item.slug+' · '+item.sha.slice(0,8),details);
+    const status=publicationStatus(item);
     element('div',status,details);
     if(item.url){
       const link=element('a','Открыть GitHub Actions',row);
@@ -165,6 +183,57 @@ function readSession(){
   }catch{}
   return null;
 }
+function reportValues(html){
+  const inert=document.createElement('template');
+  inert.innerHTML=html;
+  const values=[];
+  const tree=inert.content;
+  for(const meta of tree.querySelectorAll('meta[property^="og:"]')){
+    values.push(meta.getAttribute('property')+': '+meta.content);
+  }
+  const walker=document.createTreeWalker(tree,NodeFilter.SHOW_TEXT);
+  while(walker.nextNode()){
+    const node=walker.currentNode;
+    if(node.parentElement?.closest('script,style,template,svg,noscript'))continue;
+    const text=node.textContent.replace(/\s+/g,' ').trim();
+    if(text)values.push(text);
+  }
+  return {values,images:[...tree.querySelectorAll('img[src]')].map(img=>img.getAttribute('src')).filter(src=>src&&!src.startsWith('data:'))};
+}
+function difference(source,target){
+  const counts=new Map();
+  for(const text of target)counts.set(text,(counts.get(text)||0)+1);
+  return source.filter(text=>{
+    const count=counts.get(text)||0;
+    if(!count)return true;
+    counts.set(text,count-1);
+    return false;
+  });
+}
+async function compareReport(sha,parent){
+  const status=element('p','Сравниваем версии отчёта…',parent);
+  try{
+    const [before,after]=await Promise.all(['before','after'].map(async side=>{
+      const response=await request('/history/html?sha='+sha+'&side='+side);
+      if(!response.ok)throw new Error('GitHub не отдал версию HTML.');
+      return reportValues(await response.text());
+    }));
+    const oldText=difference(before.values,after.values);
+    const newText=difference(after.values,before.values);
+    const oldImages=difference(before.images,after.images);
+    const newImages=difference(after.images,before.images);
+    if(!oldText.length&&!newText.length&&!oldImages.length&&!newImages.length){
+      status.textContent='Изменения видимого текста и ссылок на фото не обнаружены. Правки могли затронуть разметку, стили или данные внутри отчёта.';
+      return;
+    }
+    status.textContent='Было → стало';
+    for(const [label,text,images] of [['Было',oldText,oldImages],['Стало',newText,newImages]]){
+      element('strong',label,parent);
+      const preview=element('pre',[...text,...images.map(src=>'Фото: '+src)].slice(0,100).join('\n')||'—',parent);
+      preview.style.cssText='white-space:pre-wrap;overflow-wrap:anywhere;max-height:250px;overflow:auto';
+    }
+  }catch(error){status.textContent='Сравнение недоступно: '+error.message;}
+}
 async function showHistory(){
   const container=byId('history-list');
   const status=byId('history-status');
@@ -178,7 +247,10 @@ async function showHistory(){
     for(const item of history){
       const entry=element('details','',container);
       const title=item.message.replace(/^Add report:/,'Добавлен:').replace(/^Update report:/,'Изменён:').replace(/^Remove report:/,'Удалён:');
-      element('summary',title+' · '+new Date(item.date).toLocaleString('ru-RU'),entry);
+      entry.style.cssText='background:white;border:1px solid #dbe3ee;border-radius:12px;padding:12px;margin:8px 0';
+      const summary=element('summary',title+' · '+new Date(item.date).toLocaleString('ru-RU'),entry);
+      summary.style.cursor='pointer';
+      element('span','',summary).dataset.publicationSha=item.sha;
       const content=element('div','',entry);
       entry.ontoggle=async()=>{
         if(!entry.open||entry.dataset.loaded)return;
@@ -206,7 +278,9 @@ async function showHistory(){
                 img.src=url;
               }
             }
-            if(file.patch){
+            if(file.path.endsWith('/index.html')){
+              await compareReport(item.sha,column);
+            }else if(file.patch){
               const lines=file.patch.split('\n');
               const comparison=element('details','',column);
               element('summary','Было → стало',comparison);
@@ -221,6 +295,7 @@ async function showHistory(){
         }catch(error){content.textContent=error.message;delete entry.dataset.loaded;}
       };
     }
+    renderPublications();
   }catch(error){if(authorization===auth)status.textContent='История недоступна: '+error.message;}
 }
 byId('history-refresh').onclick=showHistory;
