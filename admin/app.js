@@ -23,7 +23,7 @@ function openVisual(){
       message('Не удалось открыть редактор: '+error.message,true);
     }
   };
-  visualFrame.src='visual-editor.html?v=photos1';
+  visualFrame.src='visual-editor.html?v=photos2';
 }
 byId('visual-open').onclick=openVisual;
 byId('visual-close').onclick=()=>visualDialog.close();

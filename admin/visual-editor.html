@@ -196,7 +196,26 @@ function renderSection() {
         title.textContent = item?.label || item?.title || item?.text || (key === 'eventGroups' ? 'Группа владельца ' + (item.ownerNumber ?? 'без владельца') : (labels[key] || 'Запись') + ' ' + (index + 1));
         card.append(title);
         if (item?.src || typeof item === 'string' && /\.(webp|jpg|png)/i.test(item)) {
-          const image = document.createElement('img'); image.src = item.src || item; image.className = 'data-photo'; card.append(image);
+          const image = document.createElement('img');
+          const source=item.src || item;
+          image.src=new URL(source,doc().baseURI).href;
+          image.className = 'data-photo';
+          image.alt='Фотография '+(index+1);
+          card.append(image);
+        }
+        if(sectionKind==='photos' && value===sectionDraft){
+          if(index===0)ui('p','Главное фото',card,'hint');
+          const buttons=ui('div','',card,'actions');
+          function move(destination){
+            if(destination<0||destination>=value.length||destination===index)return;
+            value.splice(index,1);
+            value.splice(destination,0,item);
+            renderSection();
+            host.querySelectorAll('.data-entry')[destination]?.scrollIntoView({block:'nearest'});
+          }
+          action(buttons,'Выше',()=>move(index-1)).disabled=index===0;
+          action(buttons,'Ниже',()=>move(index+1)).disabled=index===value.length-1;
+          action(buttons,'Сделать главным',()=>move(0)).disabled=index===0;
         }
         draw(item, value, index, card);
         const remove = document.createElement('button'); remove.type = 'button'; remove.textContent = 'Удалить эту запись'; remove.className = 'data-delete';
