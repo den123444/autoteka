@@ -2,6 +2,8 @@ const byId=id=>document.getElementById(id);
 const form=byId('save');
 const slug=byId('slug');
 let selected=null;
+let originalHtml='';
+const reportSource=byId('report-source');
 let busy=false;
 let authorization='';
 function apiUrl(suffix) {
@@ -116,6 +118,10 @@ function element(tag,text,parent) {
 function select(report) {
   form.reset();
   selected=report;
+  originalHtml='';
+  reportSource.value='';
+  byId('source-field').hidden=true;
+  byId('source-field').style.display='none';
   slug.value=report?.slug||'';
   slug.readOnly=Boolean(report);
   byId('form-title').textContent=report?'Редактировать '+report.slug:'Добавить автомобиль';
@@ -146,10 +152,26 @@ async function list() {
       setTimeout(()=>URL.revokeObjectURL(url),2000);
       message('HTML скачан.');
     });
-    element('button','Редактировать',actions).onclick=()=>{
+    const edit=element('button','Редактировать',actions);
+    edit.setAttribute('aria-controls','editor');
+    edit.onclick=()=>run(async()=>{
+      if(selected && reportSource.value!==originalHtml &&
+        !window.confirm('Открыть другой отчёт и сбросить несохранённые правки?')) {
+        message('Правки остались в форме.');
+        return;
+      }
+      const response=await request('/'+report.slug);
+      if(!response.ok)throw new Error('Не удалось загрузить HTML отчёта.');
+      const html=await response.text();
       select(report);
-      byId('editor').scrollIntoView();
-    };
+      reportSource.value=html;
+      originalHtml=reportSource.value;
+      byId('source-field').hidden=false;
+      byId('source-field').style.display='grid';
+      message('Открыт отчёт '+report.slug+'.');
+      reportSource.focus({preventScroll:true});
+      byId('editor').scrollIntoView({block:'start'});
+    });
     const remove=element('button','Убрать',actions);
     remove.className='remove';
     remove.onclick=()=>{
@@ -176,7 +198,10 @@ function encode(file) {
 form.onsubmit=event=>{
   event.preventDefault();
   run(async()=>{
-    const html=byId('html').files[0];
+    const edited=selected && reportSource.value!==originalHtml;
+    const html=byId('html').files[0] || (edited
+      ? new File([reportSource.value],'index.html',{type:'text/html;charset=utf-8'})
+      : null);
     const assets=[...byId('assets').files];
     if(!selected&&!html)throw new Error('Выберите HTML нового отчёта.');
     const files=assets.map(file=>{
