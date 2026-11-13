@@ -1,1 +1,1 @@
-window.ADMIN_API_URL = 'https://your-service.up.railway.app';
+window.ADMIN_API_URL = 'autoteka-admin.railway.internal';
