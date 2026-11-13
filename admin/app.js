@@ -103,7 +103,7 @@ function renderPublications(){
     }
   }
   const linked=new Set([...document.querySelectorAll('[data-publication-sha]')].map(node=>node.dataset.publicationSha));
-  const pending=[...publications.values()].filter(item=>item.status!=='completed'&&!linked.has(item.sha));
+  const pending=[...publications.values()].filter(item=>item.status!=='completed'&&!linked.has(item.sha)&&!hiddenHistory.has(item.sha));
   byId('publications').hidden=!pending.length;
   const list=byId('publication-list');
   list.replaceChildren();
@@ -234,6 +234,23 @@ async function compareReport(sha,parent){
     }
   }catch(error){status.textContent='Сравнение недоступно: '+error.message;}
 }
+const hiddenHistoryKey='autoteka-admin-hidden-history';
+const hiddenHistory=new Set();
+try{
+  for(const sha of JSON.parse(localStorage.getItem(hiddenHistoryKey)||'[]')){
+    if(/^[a-f0-9]{40}$/.test(sha))hiddenHistory.add(sha);
+  }
+}catch{}
+function saveHiddenHistory(){
+  try{localStorage.setItem(hiddenHistoryKey,JSON.stringify([...hiddenHistory]));}catch{}
+  byId('history-restore').hidden=!hiddenHistory.size;
+}
+byId('history-restore').onclick=()=>{
+  if(!window.confirm('Вернуть все скрытые записи истории?'))return;
+  hiddenHistory.clear();
+  saveHiddenHistory();
+  void showHistory();
+};
 async function showHistory(){
   const container=byId('history-list');
   const status=byId('history-status');
@@ -243,14 +260,27 @@ async function showHistory(){
     const history=await api('/history');
     if(!authorization||authorization!==auth)return;
     container.replaceChildren();
-    status.textContent=history.length?'':'Изменений пока нет.';
-    for(const item of history){
+    const visible=history.filter(item=>!hiddenHistory.has(item.sha));
+    byId('history-restore').hidden=!hiddenHistory.size;
+    status.textContent=visible.length?'':history.length?'Все текущие записи скрыты.':'Изменений пока нет.';
+    for(const item of visible){
       const entry=element('details','',container);
       const title=item.message.replace(/^Add report:/,'Добавлен:').replace(/^Update report:/,'Изменён:').replace(/^Remove report:/,'Удалён:');
       entry.style.cssText='background:white;border:1px solid #dbe3ee;border-radius:12px;padding:12px;margin:8px 0';
       const summary=element('summary',title+' · '+new Date(item.date).toLocaleString('ru-RU'),entry);
       summary.style.cursor='pointer';
       element('span','',summary).dataset.publicationSha=item.sha;
+      const remove=element('button','Убрать из истории',entry);
+      remove.type='button';
+      remove.className='remove';
+      remove.onclick=()=>{
+        if(!window.confirm('Убрать эту запись из истории? '+title))return;
+        hiddenHistory.add(item.sha);
+        saveHiddenHistory();
+        entry.remove();
+        renderPublications();
+        if(!container.children.length)status.textContent='Все текущие записи скрыты.';
+      };
       const content=element('div','',entry);
       entry.ontoggle=async()=>{
         if(!entry.open||entry.dataset.loaded)return;
