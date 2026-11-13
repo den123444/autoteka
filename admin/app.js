@@ -3,7 +3,43 @@ const form=byId('save');
 const slug=byId('slug');
 let selected=null;
 let originalHtml='';
-const reportSource=byId('report-source');
+let draftHtml='';
+const visualFrame=byId('visual-frame');
+const visualDialog=byId('visual-dialog');
+let visualOpening=0;
+function openVisual(){
+  const current=selected;
+  const opening=++visualOpening;
+  visualDialog.showModal();
+  const apply=byId('visual-apply');
+  apply.disabled=true;
+  visualFrame.onload=()=>{
+    if(opening!==visualOpening||!visualDialog.open||selected!==current)return;
+    try{
+      visualFrame.contentWindow.reportEditor.open(draftHtml,current.url);
+      apply.disabled=false;
+    }catch(error){
+      visualDialog.close();
+      message('Не удалось открыть редактор: '+error.message,true);
+    }
+  };
+  visualFrame.src='visual-editor.html';
+}
+byId('visual-open').onclick=openVisual;
+byId('visual-close').onclick=()=>visualDialog.close();
+visualDialog.addEventListener('close',()=>{
+  visualOpening++;
+  visualFrame.onload=null;
+  visualFrame.src='about:blank';
+});
+byId('visual-apply').onclick=()=>{
+  try{
+    draftHtml=visualFrame.contentWindow.reportEditor.exportHtml();
+    visualDialog.close();
+    message('Правки применены. Нажмите «Сохранить в GitHub».');
+    byId('editor').scrollIntoView({block:'start'});
+  }catch(error){message(error.message,true);}
+};
 let busy=false;
 let authorization='';
 function apiUrl(suffix) {
@@ -106,7 +142,7 @@ async function run(action) {
   try { await action(); } catch(error) { message(error.message,true); }
   finally {
     busy=false;
-    document.querySelectorAll('button').forEach(button=>button.disabled=false);
+    document.querySelectorAll('button:not(#visual-apply)').forEach(button=>button.disabled=false);
   }
 }
 function element(tag,text,parent) {
@@ -119,7 +155,7 @@ function select(report) {
   HTMLFormElement.prototype.reset.call(form);
   selected=report;
   originalHtml='';
-  reportSource.value='';
+  draftHtml='';
   byId('source-field').hidden=true;
   byId('source-field').style.display='none';
   slug.value=report?.slug||'';
@@ -155,7 +191,7 @@ async function list() {
     const edit=element('button','Редактировать',actions);
     edit.setAttribute('aria-controls','editor');
     edit.onclick=()=>run(async()=>{
-      if(selected && reportSource.value!==originalHtml &&
+      if(selected && draftHtml!==originalHtml &&
         !window.confirm('Открыть другой отчёт и сбросить несохранённые правки?')) {
         message('Правки остались в форме.');
         return;
@@ -164,13 +200,13 @@ async function list() {
       if(!response.ok)throw new Error('Не удалось загрузить HTML отчёта.');
       const html=await response.text();
       select(report);
-      reportSource.value=html;
-      originalHtml=reportSource.value;
+      draftHtml=html;
+      originalHtml=html;
       byId('source-field').hidden=false;
       byId('source-field').style.display='grid';
       message('Открыт отчёт '+report.slug+'.');
-      reportSource.focus({preventScroll:true});
       byId('editor').scrollIntoView({block:'start'});
+      openVisual();
     });
     const remove=element('button','Убрать',actions);
     remove.className='remove';
@@ -198,9 +234,9 @@ function encode(file) {
 form.onsubmit=event=>{
   event.preventDefault();
   run(async()=>{
-    const edited=selected && reportSource.value!==originalHtml;
+    const edited=selected && draftHtml!==originalHtml;
     const html=byId('html').files[0] || (edited
-      ? new File([reportSource.value],'index.html',{type:'text/html;charset=utf-8'})
+      ? new File([draftHtml],'index.html',{type:'text/html;charset=utf-8'})
       : null);
     const assets=[...byId('assets').files];
     if(!selected&&!html)throw new Error('Выберите HTML нового отчёта.');
