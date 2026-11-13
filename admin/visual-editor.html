@@ -527,6 +527,14 @@ function renderMileage(host) {
     field(fields,'Дата и время (Москва)',point.row,'date',{date:true,required:true});field(fields,'Пробег, км',point.row,'mileage',{number:true,required:true,change:()=>{circles[points.indexOf(point)]?.setAttribute('cy',y(point));line.setAttribute('points',linePoints());}});
     field(fields,'Состояние точки',point,'status',{choices:[['regular','Обычная'],['twisted','Скручен пробег'],['anomaly','Аномалия'],['duplicate','Дубликат'],['endOfRegistration','Снятие с учёта']]});
     const tip=point.tooltip[point.type];field(fields,'Подпись',tip,point.type==='owner'?'title':'label');
+    if(point.type==='owner'){
+      ui('h3','Карточка владельца на графике',fields);
+      field(fields,'Период',tip,'period');
+      field(fields,'Сколько владел',tip,'duration');
+      field(fields,'Тип владельца',tip,'type');
+      field(fields,'Где',tip,'location');
+      field(fields,'Что это значит',tip,'description',{multiline:true});
+    }
     if(point.type==='mileage'){field(fields,'Источник',tip,'eventProducer');field(fields,'Место',tip,'location');field(fields,'Описание',tip,'description',{multiline:true});}
     removeItem(fields,sectionDraft,point,'Удалить точку');
   }
