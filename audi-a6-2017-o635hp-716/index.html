@@ -40703,7 +40703,7 @@ WAUZZZ4G4HN131422</div></div><div class="styles-module-root-JoZmb styles-module-
   });
   let activePoint, hideTimer;
   function cancelHide(){clearTimeout(hideTimer);}
-  function scheduleHide(){cancelHide();hideTimer=setTimeout(hidePoint,140);}
+  function scheduleHide(){cancelHide();if(matchMedia("(max-width: 767px), (hover: none)").matches)return;hideTimer=setTimeout(hidePoint,140);}
   function hidePoint() {
     cancelHide();
     const panel=document.querySelector('.offline-point:not(.report-point-leaving)');
@@ -41244,7 +41244,7 @@ for(const image of previews)if(image.hidden)image.closest('picture')?.style.setP
 const mainPhoto=document.querySelector('[class*="desktop-gallery-previews-main-photo-container"]');
 if(mainPhoto&&data.photoPaths.length){
   const all=make('button','Все фото ('+data.photoPaths.length+')',mainPhoto);
-  all.type='button';all.className='v26-gallery-link';all.onclick=event=>{event.stopPropagation();photoGrid();};
+  all.type='button';all.className='v26-gallery-link';all.dataset.offlineUi='';all.onclick=event=>{event.stopPropagation();photoGrid();};
 }
 const downloadAction=byMarker('report/download');
 downloadAction?.addEventListener('click',event=>{event.preventDefault();window.print();});
