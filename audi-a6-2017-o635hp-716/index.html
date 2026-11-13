@@ -40199,9 +40199,19 @@ WAUZZZ4G4HN131422</div></div><div class="styles-module-root-JoZmb styles-module-
   }
   addEventListener('scroll',closeNumbers,{passive:true});
   addEventListener('resize',closeNumbers);
+  function reportHeaderDate() {
+    const heading=document.querySelector('[class*="desktop-header-date-with-buttons"]');
+    const value=heading?.textContent.trim().match(/^От\s+(.+?)(?:,\s*мог устареть|$)/i)?.[1];
+    if(!value)return longDate(data.date);
+    const months=['января','февраля','марта','апреля','мая','июня','июля','августа','сентября','октября','ноября','декабря'];
+    return value.replace(/\s+(?:г\.?|года)$/i,'').replace(/^(\d{1,2})\s+([а-яё]+)\.?\s+(\d{4})$/i,(date,day,month,year)=>{
+      const full=months.find(name=>name.startsWith(month.toLowerCase()));
+      return full ? day+' '+full+' '+year : date;
+    });
+  }
   function reorder() {
     const {content} = popup('О машине могли появиться новые данные','report-modal');
-    make('p','Вы смотрите отчёт от '+longDate(data.date)+' года. С тех пор могло случиться всякое: новые ДТП, штрафы, смена владельца.',content);
+    make('p','Вы смотрите отчёт от '+reportHeaderDate()+' года. С тех пор могло случиться всякое: новые ДТП, штрафы, смена владельца.',content);
     make('p','Перезакажите отчёт, чтобы получить самые свежие данные и не рисковать.',content);
     const link = make('a','Перезаказать отчёт',content);
     link.href = reportUrl; link.target = '_blank'; link.rel = 'noopener'; link.className = 'report-action';
@@ -41142,7 +41152,7 @@ function createMobileHero(){
   const counter=mobileElement('button','1/'+data.photoPaths.length,hero,'v15-photo-count');counter.onclick=()=>photoGrid();
   track.addEventListener('scroll',()=>{counter.textContent=(Math.round(track.scrollLeft/Math.max(1,track.clientWidth))+1)+'/'+data.photoPaths.length;},{passive:true});
   if(!data.photoPaths.length)hero.hidden=true;
-  const reportDate=new Intl.DateTimeFormat('ru',{day:'numeric',month:'short',year:'numeric',timeZone:'Europe/Moscow'}).format(new Date(data.date*1000)).replace(/\.| г$/g,'');
+  const reportDate=reportHeaderDate();
   const date=make('p','От '+reportDate+', мог устареть');date.className='v15-report-date';date.dataset.v15Ui='';header.prepend(date);
   const reorderButton=make('button','Перезаказать',header);reorderButton.className='v15-reorder';reorderButton.dataset.v15Ui='';reorderButton.onclick=()=>reorder();
 }
