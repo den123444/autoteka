@@ -887,6 +887,22 @@ document.addEventListener('DOMContentLoaded',()=>{
  if(end<0)return source;
  return source.slice(0,end)+'\nconst galleryReferenceLayout=make("style",'+JSON.stringify(css)+',document.head);galleryReferenceLayout.dataset.v15Ui="";\n'+source.slice(end);
 };
+  const updateReorderDate=function updateReportDate(source){
+  if(source.includes('function reportHeaderDate(')||!source.includes('longDate(data.date)'))return source;
+  source=source.replace('  function reorder() {',`  function reportHeaderDate() {
+    const heading=document.querySelector('[class*="desktop-header-date-with-buttons"]');
+    const value=heading?.textContent.trim().match(/^От\\s+(.+?)(?:,\\s*мог устареть|$)/i)?.[1];
+    if(!value)return longDate(data.date);
+    const months=['января','февраля','марта','апреля','мая','июня','июля','августа','сентября','октября','ноября','декабря'];
+    return value.replace(/\\s+(?:г\\.?|года)$/i,'').replace(/^(\\d{1,2})\\s+([а-яё]+)\\.?\\s+(\\d{4})$/i,(date,day,month,year)=>{
+      const full=months.find(name=>name.startsWith(month.toLowerCase()));
+      return full ? day+' '+full+' '+year : date;
+    });
+  }
+  function reorder() {`);
+  return source.replace("longDate(data.date)+' года. С тех пор","reportHeaderDate()+' года. С тех пор")
+    .replace(/const reportDate=new Intl\.DateTimeFormat\([^\n]+/, 'const reportDate=reportHeaderDate();');
+};
   window.reportEditor={
     open(html,url){
       const parsed=new DOMParser().parseFromString(html,'text/html');
@@ -913,7 +929,7 @@ document.addEventListener('DOMContentLoaded',()=>{
         }
       }
 
-      if(runtime?.textContent.includes("function photoGrid()"))runtime.textContent=updateReportGallery(runtime.textContent);
+      if(runtime?.textContent.includes("function photoGrid()"))runtime.textContent=updateReorderDate(updateReportGallery(runtime.textContent));
       history=[];
       index=-1;
       load('<!DOCTYPE html>\n'+parsed.documentElement.outerHTML);
@@ -922,7 +938,7 @@ document.addEventListener('DOMContentLoaded',()=>{
       const parsed=new DOMParser().parseFromString(serialize(),'text/html');
       parsed.querySelector('[data-admin-preview-base]')?.remove();
       const runtime=parsed.querySelector('script[data-editor-runtime-version]');
-      if(runtime?.textContent.includes('function photoGrid()'))runtime.textContent=updateReportGallery(runtime.textContent);
+      if(runtime?.textContent.includes('function photoGrid()'))runtime.textContent=updateReorderDate(updateReportGallery(runtime.textContent));
       return '<!DOCTYPE html>\n'+parsed.documentElement.outerHTML;
     }
   };
