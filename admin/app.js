@@ -25,6 +25,73 @@ async function api(suffix='',method='GET',payload) {
   if(!response.ok) throw new Error(result.error||'Ошибка запроса.');
   return result;
 }
+
+const publicationKey='autoteka-admin-publications';
+const publications=new Map();
+let publicationTimer;
+let publicationSession=0;
+try {
+  for(const item of JSON.parse(localStorage.getItem(publicationKey)||'[]')){
+    if(/^[a-f0-9]{40}$/.test(item.sha))publications.set(item.sha,item);
+  }
+} catch { /* Storage may be unavailable. */ }
+function savePublications(){
+  try {localStorage.setItem(publicationKey,JSON.stringify([...publications.values()]));} catch {}
+}
+function renderPublications(){
+  byId('publications').hidden=!publications.size;
+  const list=byId('publication-list');
+  list.replaceChildren();
+  for(const item of [...publications.values()].reverse()){
+    const row=element('article','',list);
+    const details=element('div','',row);
+    element('strong',item.slug+' · '+item.sha.slice(0,8),details);
+    let status='Ждём запуска GitHub Pages';
+    if(item.status==='queued'||item.status==='requested'||item.status==='pending'||item.status==='waiting_for_approval')status='В очереди';
+    if(item.status==='in_progress')status='GitHub Pages публикует обновление';
+    if(item.status==='completed'){
+      const labels={success:'Опубликовано',failure:'Сборка завершилась ошибкой',cancelled:'Публикация отменена',skipped:'Публикация пропущена'};
+      status=labels[item.conclusion]||'Публикация не подтверждена ('+(item.conclusion||'без результата')+')';
+      if(item.updatedAt)status+=' · '+new Date(item.updatedAt).toLocaleString('ru-RU');
+    }
+    if(item.error)status='Статус недоступен: '+item.error;
+    if(!item.error&&item.status!=='completed'&&Date.now()-item.started>20*60_000)status+=' · проверьте Actions';
+    element('div',status,details);
+    if(item.url){
+      const link=element('a','Открыть GitHub Actions',row);
+      link.href=item.url;
+      link.target='_blank';
+      link.rel='noopener noreferrer';
+    }
+  }
+}
+async function checkPublications(){
+  clearTimeout(publicationTimer);
+  if(!authorization)return;
+  const session=++publicationSession;
+  const pending=[...publications.values()].filter(item=>item.status!=='completed');
+  await Promise.all(pending.map(async item=>{
+    try {
+      const result=await api('/publication?sha='+item.sha);
+      if(session===publicationSession)Object.assign(item,result,{error:''});
+    }catch(error){
+      if(session===publicationSession)item.error=error.message;
+    }
+  }));
+  if(session!==publicationSession||!authorization)return;
+  savePublications();
+  renderPublications();
+  if(pending.some(item=>item.status!=='completed'&&Date.now()-item.started<20*60_000)){
+    publicationTimer=setTimeout(checkPublications,15000);
+  }
+}
+function trackPublication(result,name){
+  publications.set(result.commit,{sha:result.commit,slug:name,started:Date.now()});
+  while(publications.size>8)publications.delete(publications.keys().next().value);
+  savePublications();
+  renderPublications();
+  void checkPublications();
+}
 function message(text,error=false) {
   byId('status').textContent=text;
   byId('status').classList.toggle('error',error);
@@ -90,6 +157,7 @@ async function list() {
       if(confirm!==report.slug)return;
       run(async()=>{
         const result=await api('/'+report.slug,'DELETE',{confirm,revision:report.revision});
+        trackPublication(result,report.slug);
         if(selected?.slug===report.slug)select(null);
         await list();
         message('Отчёт убран. Коммит '+result.commit.slice(0,8)+'.');
@@ -123,13 +191,14 @@ form.onsubmit=event=>{
     const payload=[];
     for(const {file,path} of files)payload.push({path,data:await encode(file)});
     const result=await api('/'+slug.value,'PUT',{revision:selected?.revision??null,files:payload});
+    trackPublication(result,slug.value);
     select(null);
     await list();
     message('Сохранено в GitHub. Коммит '+result.commit.slice(0,8)+'. GitHub Pages обновит страницу после сборки.');
   });
 };
 byId('reset').onclick=()=>select(null);
-byId('refresh').onclick=()=>run(async()=>{await list();message('Список обновлён.');});
+byId('refresh').onclick=()=>run(async()=>{await list();void checkPublications();message('Список обновлён.');});
 byId('login').onsubmit=event=>{
   event.preventDefault();
   run(async()=>{
@@ -142,10 +211,14 @@ byId('login').onsubmit=event=>{
     byId('workspace').hidden=false;
     byId('refresh').hidden=false;
     message('Вход выполнен.');
+    renderPublications();
+    void checkPublications();
   });
 };
 byId('logout').onclick=()=>{
   authorization='';
+  publicationSession++;
+  clearTimeout(publicationTimer);
   select(null);
   byId('reports').replaceChildren();
   byId('workspace').hidden=true;
