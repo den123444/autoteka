@@ -116,7 +116,7 @@ function element(tag,text,parent) {
   return node;
 }
 function select(report) {
-  form.reset();
+  HTMLFormElement.prototype.reset.call(form);
   selected=report;
   originalHtml='';
   reportSource.value='';
@@ -222,7 +222,7 @@ form.onsubmit=event=>{
     message('Сохранено в GitHub. Коммит '+result.commit.slice(0,8)+'. GitHub Pages обновит страницу после сборки.');
   });
 };
-byId('reset').onclick=()=>select(null);
+byId('new-report').onclick=()=>select(null);
 byId('refresh').onclick=()=>run(async()=>{await list();void checkPublications();message('Список обновлён.');});
 byId('login').onsubmit=event=>{
   event.preventDefault();
