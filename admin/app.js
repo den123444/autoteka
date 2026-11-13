@@ -151,6 +151,79 @@ function element(tag,text,parent) {
   parent.append(node);
   return node;
 }
+const sessionStorageKey='autoteka-admin-session';
+function storeSession(value){
+  try{
+    if(value)localStorage.setItem(sessionStorageKey,JSON.stringify(value));
+    else localStorage.removeItem(sessionStorageKey);
+  }catch{}
+}
+function readSession(){
+  try{
+    const session=JSON.parse(localStorage.getItem(sessionStorageKey)||'null');
+    if(session && session.expires>Date.now() && typeof session.token==='string')return session;
+  }catch{}
+  return null;
+}
+async function showHistory(){
+  const container=byId('history-list');
+  const status=byId('history-status');
+  const auth=authorization;
+  status.textContent='Загрузка истории…';
+  try{
+    const history=await api('/history');
+    if(!authorization||authorization!==auth)return;
+    container.replaceChildren();
+    status.textContent=history.length?'':'Изменений пока нет.';
+    for(const item of history){
+      const entry=element('details','',container);
+      const title=item.message.replace(/^Add report:/,'Добавлен:').replace(/^Update report:/,'Изменён:').replace(/^Remove report:/,'Удалён:');
+      element('summary',title+' · '+new Date(item.date).toLocaleString('ru-RU'),entry);
+      const content=element('div','',entry);
+      entry.ontoggle=async()=>{
+        if(!entry.open||entry.dataset.loaded)return;
+        entry.dataset.loaded='true';
+        content.textContent='Загрузка изменений…';
+        try{
+          const detail=await api('/history/detail?sha='+item.sha);
+          content.replaceChildren();
+          for(const file of detail.files){
+            const card=element('article','',content);
+            const column=element('div','',card);
+            element('strong',file.path,column);
+            element('p',({added:'Добавлен',removed:'Удалён',modified:'Изменён',renamed:'Переименован'})[file.status]||file.status,column);
+            if(file.before||file.after){
+              const images=element('div','',column);
+              images.className='actions';
+              for(const [label,url] of [['Было',file.before],['Стало',file.after]]){
+                const figure=element('figure','',images);
+                element('figcaption',label,figure);
+                if(!url){element('span','—',figure);continue;}
+                const img=element('img','',figure);
+                img.alt=label;
+                img.loading='lazy';
+                img.width=160;
+                img.src=url;
+              }
+            }
+            if(file.patch){
+              const lines=file.patch.split('\n');
+              const comparison=element('details','',column);
+              element('summary','Было → стало',comparison);
+              for(const [label,prefix] of [['Было','-'],['Стало','+']]){
+                element('strong',label,comparison);
+                const preview=element('pre',lines.filter(line=>line.startsWith(prefix)).map(line=>line.slice(1)).join('\n')||'—',comparison);
+                preview.style.cssText='white-space:pre-wrap;overflow-wrap:anywhere;max-height:230px;overflow:auto';
+              }
+            }
+          }
+          if(detail.more)element('p','Показаны первые 100 файлов.',content);
+        }catch(error){content.textContent=error.message;delete entry.dataset.loaded;}
+      };
+    }
+  }catch(error){if(authorization===auth)status.textContent='История недоступна: '+error.message;}
+}
+byId('history-refresh').onclick=showHistory;
 function select(report) {
   HTMLFormElement.prototype.reset.call(form);
   selected=report;
@@ -216,6 +289,7 @@ async function list() {
       run(async()=>{
         const result=await api('/'+report.slug,'DELETE',{confirm,revision:report.revision});
         trackPublication(result,report.slug);
+        void showHistory();
         if(selected?.slug===report.slug)select(null);
         await list();
         message('Отчёт убран. Коммит '+result.commit.slice(0,8)+'.');
@@ -253,6 +327,7 @@ form.onsubmit=event=>{
     for(const {file,path} of files)payload.push({path,data:await encode(file)});
     const result=await api('/'+slug.value,'PUT',{revision:selected?.revision??null,files:payload});
     trackPublication(result,slug.value);
+    void showHistory();
     select(null);
     await list();
     message('Сохранено в GitHub. Коммит '+result.commit.slice(0,8)+'. GitHub Pages обновит страницу после сборки.');
@@ -267,17 +342,30 @@ byId('login').onsubmit=event=>{
     const bytes=new TextEncoder().encode('admin:'+password.value);
     authorization='Basic '+btoa(String.fromCharCode(...bytes));
     password.value='';
-    try { await list(); } catch(error) { authorization=''; throw error; }
+    try {
+      if(byId('remember').checked){
+        const session=await api('/session','POST',{});
+        storeSession(session);
+        authorization='Bearer '+session.token;
+      }
+      await enterWorkspace();
+    } catch(error){authorization='';storeSession(null);throw error;}
+  });
+};
+async function enterWorkspace(){
+    await list();
     byId('login').hidden=true;
     byId('workspace').hidden=false;
     byId('refresh').hidden=false;
     message('Вход выполнен.');
     renderPublications();
     void checkPublications();
-  });
-};
+    void showHistory();
+}
 byId('logout').onclick=()=>{
   authorization='';
+  storeSession(null);
+  byId('history-list').replaceChildren();
   publicationSession++;
   clearTimeout(publicationTimer);
   select(null);
@@ -287,3 +375,12 @@ byId('logout').onclick=()=>{
   byId('login').hidden=false;
   message('Вы вышли.');
 };
+
+const savedSession=readSession();
+if(savedSession){
+  authorization='Bearer '+savedSession.token;
+  void run(async()=>{
+    try{await enterWorkspace();}
+    catch(error){authorization='';storeSession(null);throw error;}
+  });
+}
