@@ -40050,7 +40050,13 @@ html.v15-dialog-open{overflow:hidden!important}
       image.alt = photo.description || 'Фотография ' + (index + 1);
       image.src = photoSource(index);
     });
-    filter.onchange=()=>{for(const tile of content.children)tile.hidden=!!filter.value&&tile.dataset.photoDate!==filter.value;};
+    filter.onchange=()=>{
+      let visible=0;
+      for(const tile of content.children){
+        tile.hidden=!!filter.value&&tile.dataset.photoDate!==filter.value;
+        tile.style.order=tile.hidden ? 0 : visible++;
+      }
+    };
   }
   function photoDate(timestamp){
     if(typeof timestamp==='string')return timestamp;
@@ -40094,6 +40100,19 @@ html.v15-dialog-open{overflow:hidden!important}
       image.style.removeProperty('animation');
       show();
     }
+    let swipeStart;
+    stage.addEventListener('touchstart',event=>{
+      const touch=event.touches[0];
+      swipeStart=event.touches.length===1 ? [touch.clientX,touch.clientY] : null;
+    },{passive:true});
+    stage.addEventListener('touchend',event=>{
+      if(!swipeStart)return;
+      const touch=event.changedTouches[0];
+      const dx=touch.clientX-swipeStart[0],dy=touch.clientY-swipeStart[1];
+      swipeStart=null;
+      if(Math.abs(dx)>45&&Math.abs(dx)>Math.abs(dy)*1.4)step(dx<0?1:-1);
+    },{passive:true});
+    stage.addEventListener('touchcancel',()=>{swipeStart=null;});
     back.onclick = () => step(-1);
     next.onclick = () => step(1);
     dialog.addEventListener('keydown', event => {
@@ -41008,7 +41027,7 @@ function createMobileHero(){
   const header=document.querySelector('.desktop-header-block-EVGOM');if(!header||document.querySelector('.v15-hero'))return;
   const hero=make('div','');hero.className='v15-hero';hero.dataset.v15Ui='';header.before(hero);
   const track=mobileElement('div','',hero,'v15-photo-track');
-  data.photoPaths.forEach((photo,index)=>{const image=make('img','',track);image.src=photoSource(index);image.alt='Фотография автомобиля '+(index+1);image.loading=index?'lazy':'eager';image.draggable=false;image.onclick=()=>gallery(index);});
+  data.photoPaths.forEach((photo,index)=>{const image=make('img','',track);image.src=photoSource(index);image.alt='Фотография автомобиля '+(index+1);image.loading=index?'lazy':'eager';image.draggable=false;image.onclick=()=>photoGrid();});
   const controls=mobileElement('div','',hero,'v15-hero-controls');
   const back=make('button','←',controls);back.setAttribute('aria-label','Назад');back.onclick=()=>history.back();
   const download=make('button','↓',controls);download.setAttribute('aria-label','Скачать PDF');download.onclick=()=>window.print();
@@ -41123,5 +41142,7 @@ document.addEventListener('click',event=>{
   if(!event.target.closest('.offline-point'))hidePoint();
 });
 
+
+const galleryReferenceLayout=make("style","\n.report-grid-window>section.report-grid{width:100%;box-sizing:border-box;margin:0 auto;align-content:start;align-items:start;padding:0 8px 12px;grid-auto-rows:max-content}\n.report-grid-window .report-grid button{width:100%;min-width:0}\n.report-grid-window .report-grid-filter{cursor:pointer}\n.report-photo-window .report-photo-stage{min-height:0;box-sizing:border-box}\n.report-photo-window .report-photo-stage img{max-height:calc(100dvh - 155px)}\n@media(max-width:767px){\n .offline-dialog.report-full:is(.report-grid-window,.report-photo-window){inset:0!important;width:100%!important;height:100dvh!important;max-height:none!important;margin:0!important;border-radius:0!important;overflow:hidden!important}\n .offline-dialog.report-full:is(.report-grid-window,.report-photo-window)>header{height:48px;display:flex!important;justify-content:center!important;align-items:center!important;padding:0 54px!important;border:0;min-height:48px!important}\n .offline-dialog.report-full:is(.report-grid-window,.report-photo-window)>header::before{display:none!important}\n .offline-dialog.report-full:is(.report-grid-window,.report-photo-window)>header>.report-close{left:6px!important;right:auto!important;top:2px!important;background:transparent!important}\n .offline-dialog.report-full.report-grid-window>section.report-grid{height:calc(100dvh - 48px)!important;max-height:none!important;overflow:auto!important;gap:6px;padding:4px 8px 12px!important;display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important}\n .report-grid-window .report-grid button{grid-column:auto;aspect-ratio:1}\n .report-grid-window .report-grid button:nth-child(3n+1){grid-column:span 2;aspect-ratio:1.63}\n .report-photo-window,.report-photo-window>header{background:#000!important;color:white!important}\n .offline-dialog.report-photo-window>header>.report-close::before,.offline-dialog.report-photo-window>header>.report-close::after{background:white!important}\n .report-photo-window .report-return-grid,.report-photo-window .report-photo-strip,.report-photo-window .offline-gallery nav{display:none!important}\n .report-photo-window .offline-gallery{display:block!important;height:calc(100dvh - 48px)!important;overflow:hidden!important}\n .report-photo-window .report-photo-stage{width:100%!important;height:100%;padding:0 0 48px!important;touch-action:pan-y}\n .report-photo-window .report-photo-stage img{width:100%;height:100%;max-height:none;object-fit:contain;background:#000}\n .report-photo-window .report-photo-date{position:fixed;left:50%;top:16px;bottom:auto;transform:translateX(-50%);padding:0;background:none;z-index:4}\n .report-photo-window .offline-gallery>p{position:fixed;right:16px;top:16px;margin:0!important;z-index:4;color:white}\n}\n",document.head);galleryReferenceLayout.dataset.v15Ui="";
 })();
 </script></body></html>
