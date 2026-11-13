@@ -824,6 +824,14 @@ document.addEventListener('DOMContentLoaded',()=>{
         base.dataset.adminPreviewBase='';
         parsed.head.prepend(base);
       }
+      const runtime=[...parsed.scripts].find(script=>script.hasAttribute('data-editor-runtime-version'));
+      if(runtime && !runtime.textContent.includes('Fill the desktop photo strip')){
+        const source=runtime.textContent;
+        const end=source.lastIndexOf('})();');
+        if(end>=0&&source.includes('const previews = [')&&source.includes('function gallery(')){
+          runtime.textContent=source.slice(0,end)+"\n// Fill the desktop photo strip when a report was originally saved with fewer thumbnails.\nconst strip=document.querySelector('[class*=\"desktop-gallery-previews-small-previews-container\"]');\nconst thumbnail=strip?.querySelector('[class*=\"desktop-gallery-previews-picture\"]');\nif(strip&&thumbnail){\n  while(previews.length<Math.min(6,data.photoPaths.length)){\n    const index=previews.length;\n    const picture=thumbnail.cloneNode(true);\n    const image=picture.querySelector('img');\n    if(!image)break;\n    picture.querySelectorAll('source').forEach(source=>source.remove());\n    picture.dataset.offlineUi='';\n    picture.style.removeProperty('display');\n    image.hidden=false;\n    image.removeAttribute('srcset');\n    image.src=data.photoPaths[index].src;\n    image.dataset.offlineOriginalSrc=image.src;\n    strip.append(picture);\n    previews.push(image);\n  }\n}\n"+source.slice(end);
+        }
+      }
       history=[];
       index=-1;
       load('<!DOCTYPE html>\n'+parsed.documentElement.outerHTML);
