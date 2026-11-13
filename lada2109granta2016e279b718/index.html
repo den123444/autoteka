@@ -40675,7 +40675,7 @@ html.v15-dialog-open{overflow:hidden!important}
   });
   let activePoint, hideTimer;
   function cancelHide(){clearTimeout(hideTimer);}
-  function scheduleHide(){cancelHide();hideTimer=setTimeout(hidePoint,140);}
+  function scheduleHide(){cancelHide();if(matchMedia("(max-width: 767px), (hover: none)").matches)return;hideTimer=setTimeout(hidePoint,140);}
   function hidePoint() {
     cancelHide();
     const panel=document.querySelector('.offline-point:not(.report-point-leaving)');
