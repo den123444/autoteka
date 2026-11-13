@@ -23,7 +23,7 @@ function openVisual(){
       message('Не удалось открыть редактор: '+error.message,true);
     }
   };
-  visualFrame.src='visual-editor.html';
+  visualFrame.src='visual-editor.html?v=photos1';
 }
 byId('visual-open').onclick=openVisual;
 byId('visual-close').onclick=()=>visualDialog.close();
@@ -243,13 +243,26 @@ try{
 }catch{}
 function saveHiddenHistory(){
   try{localStorage.setItem(hiddenHistoryKey,JSON.stringify([...hiddenHistory]));}catch{}
-  byId('history-restore').hidden=!hiddenHistory.size;
 }
-byId('history-restore').onclick=()=>{
-  if(!window.confirm('Вернуть все скрытые записи истории?'))return;
-  hiddenHistory.clear();
+
+const historyCutoffKey='autoteka-admin-history-cutoff';
+let historyCutoff=0;
+try { historyCutoff=Number(localStorage.getItem(historyCutoffKey))||0; } catch {}
+let latestHistory=[];
+function historyHidden(item){
+  return hiddenHistory.has(item.sha) || (Date.parse(item.date)||0)<=historyCutoff;
+}
+byId('history-clear').onclick=()=>{
+  if(!latestHistory.some(item=>!historyHidden(item)))return;
+  if(!window.confirm('Очистить историю в этом браузере? Отчёты и коммиты останутся в GitHub.'))return;
+  historyCutoff=Math.max(historyCutoff,...latestHistory.map(item=>Date.parse(item.date)||0));
+  for(const item of latestHistory)hiddenHistory.add(item.sha);
+  try { localStorage.setItem(historyCutoffKey,String(historyCutoff)); } catch {}
   saveHiddenHistory();
-  void showHistory();
+  byId('history-list').replaceChildren();
+  byId('history-clear').disabled=true;
+  byId('history-status').textContent='История очищена.';
+  renderPublications();
 };
 async function showHistory(){
   const container=byId('history-list');
@@ -260,8 +273,9 @@ async function showHistory(){
     const history=await api('/history');
     if(!authorization||authorization!==auth)return;
     container.replaceChildren();
-    const visible=history.filter(item=>!hiddenHistory.has(item.sha));
-    byId('history-restore').hidden=!hiddenHistory.size;
+    latestHistory=history;
+    const visible=history.filter(item=>!historyHidden(item));
+    byId('history-clear').disabled=!visible.length;
     status.textContent=visible.length?'':history.length?'Все текущие записи скрыты.':'Изменений пока нет.';
     for(const item of visible){
       const entry=element('details','',container);
