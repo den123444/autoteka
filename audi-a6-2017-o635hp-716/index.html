@@ -41273,5 +41273,25 @@ for (const date of document.querySelectorAll('.desktop-header-date-with-buttons-
     separator.remove();
   }
 }
+
+const thumbnailStrip=document.querySelector('[class*="desktop-gallery-previews-small-previews-container"]');
+const thumbnailTemplate=thumbnailStrip?.querySelector('[class*="desktop-gallery-previews-picture"]');
+if(thumbnailTemplate){
+  while(previews.length<Math.min(6,data.photoPaths.length)){
+    const photo=data.photoPaths[previews.length];
+    const picture=thumbnailTemplate.cloneNode(true);
+    const image=picture.querySelector('img');
+    if(!image)break;
+    picture.querySelectorAll('source').forEach(source=>source.remove());
+    picture.dataset.offlineUi='';
+    picture.style.removeProperty('display');
+    image.hidden=false;
+    image.removeAttribute('srcset');
+    image.src=photo.src;
+    image.dataset.offlineOriginalSrc=photo.src;
+    thumbnailStrip.append(picture);
+    previews.push(image);
+  }
+}
 })();
 </script></body></html>
